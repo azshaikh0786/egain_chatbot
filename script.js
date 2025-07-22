@@ -127,55 +127,68 @@ function respond(rawInput) {
       }
       break;
 
-    case 2:
-      if (isValidTrackingNumber(rawInput)) {
-        appendMessage("bot", "Tracking... 📦 Your package is in transit. Estimated delivery: July 25, 2025.");
-        step = 99;
-      } else {
+      case 2:
+        if (rawInput.toLowerCase().includes("never mind") || rawInput.toLowerCase().includes("cancel")) {
+          appendMessage("bot", "No worries! Let’s start over.");
+          step = 0;
+          respond(""); // Restart conversation
+          return;
+        }
+      
+        if (rawInput.includes("http")) {
+          appendMessage("bot", "That looks like a URL, not a tracking number. Please enter just the tracking number.");
+          return;
+        }
+      
+        if (isValidTrackingNumber(rawInput)) {
+          if (rawInput.endsWith("ZZ")) {
+            appendMessage("bot", "Hmm... that tracking number looks valid but isn’t showing results. Would you like to talk to a human agent?");
+            step = 4;
+            return;
+          }
+      
+          if (rawInput.match(/\d{9}/)?.[0] === "000000000") {
+            appendMessage("bot", "This tracking number appears to be outdated or inactive. Would you like to talk to an agent?");
+            step = 4;
+            return;
+          }
+      
+          // Success flow
+          appendMessage("bot", "📦 Good news! Your package was delivered yesterday. Did you receive it? (yes/no)");
+          step = 5; // New step to follow-up
+          return;
+        }
+      
         errorCount++;
-
+      
         if (rawInput.length < 10) {
           appendMessage("bot", "That looks a bit short. Tracking numbers are usually at least 10 characters.");
         } else if (rawInput.length > 25) {
           appendMessage("bot", "That seems too long. Can you double-check your tracking number?");
         } else if (/[^a-zA-Z0-9]/.test(rawInput)) {
           appendMessage("bot", "Tracking numbers only use letters and numbers. Please try again.");
-        } else if (rawInput.includes("http")) {
-          appendMessage("bot", "That looks like a URL, not a tracking number. Please enter just the tracking number.");
         } else {
           appendMessage("bot", "Hmm, that doesn't look right. A tracking number looks like AB123456789CD. Please try again.");
         }
-
+      
         if (errorCount >= 3) {
           appendMessage("bot", "I'm having trouble reading the tracking number. Would you like to talk to a human agent?");
           step = 4;
         }
-      }
-      break;
-
-    case 3:
-      if (isValidEmail(rawInput) || isValidOrderNumber(rawInput)) {
-        appendMessage("bot", "Thanks! Found your package. It is currently at the sorting center.");
-        step = 99;
-      } else {
-        appendMessage("bot", "I couldn’t find it with that info. Would you like to talk to a human agent?");
-        step = 4;
-      }
-      break;
-
-    case 4:
-      if (input === "yes") {
-        appendMessage("bot", "Connecting you to a live agent... 👨‍💼 Please wait.");
-        step = 99;
-
-        setTimeout(() => {
-          appendMessage("bot", "An employee will contact you shortly via a phone call on your registered mobile number. 📞");
-        }, 2000);
-      } else {
-        appendMessage("bot", "Okay! Let me know if you need anything else.");
-        step = 99;
-      }
-      break;
+        break;
+      
+      case 5: // Follow-up after delivery confirmation
+        if (input === "yes") {
+          appendMessage("bot", "Glad to hear that! Let me know if you need anything else.");
+          step = 99;
+        } else if (input === "no") {
+          appendMessage("bot", "I’m sorry to hear that. I’ll connect you to a human agent for further help.");
+          step = 4;
+        } else {
+          appendMessage("bot", "Please reply with 'yes' or 'no' — did you receive your package?");
+        }
+        break;
+      
 
     default:
       appendMessage("bot", "Thanks for using the package tracker bot! Refresh to start over.");
